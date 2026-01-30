@@ -16,12 +16,11 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-// 1. Import it with a different name
-import PaystackWebView from 'react-native-paystack-webview';
+
+
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// 2. Cast it to 'any' so TypeScript stops complaining
-const Paystack = PaystackWebView as any;
+import PaystackPayment from '../components/PaystackPayment';
 
 
 // --- INTERFACES ---
@@ -86,6 +85,7 @@ export default function EventDetails({ route, navigation }: any) {
   // Ticket & Payment States
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<TicketItem | null>(null);
+  const [showPaystack, setShowPaystack] = useState(false);
 
   // --- DATA FETCHING ---
   const fetchEventDetails = useCallback(async () => {
@@ -170,21 +170,20 @@ export default function EventDetails({ route, navigation }: any) {
 
       // 2. If Paid, show ticket selection modal
       // If there's only 1 ticket type, select it automatically
-      if (eventData.tickets && eventData.tickets.length === 1) {
-          setSelectedTicket(eventData.tickets[0]);
-          // Short delay to allow state update before opening paystack
-          setTimeout(() => paystackWebViewRef.current?.startTransaction(), 100);
+        if (eventData.tickets && eventData.tickets.length === 1) {
+            setSelectedTicket(eventData.tickets[0]);
+            setTimeout(() => setShowPaystack(true), 100);
       } else {
           setShowTicketModal(true);
       }
   };
 
-  const onTicketSelect = (ticket: TicketItem) => {
-      setSelectedTicket(ticket);
-      setShowTicketModal(false);
-      // Trigger Paystack
-      setTimeout(() => paystackWebViewRef.current?.startTransaction(), 500);
-  };
+const onTicketSelect = (ticket: TicketItem) => {
+    setSelectedTicket(ticket);
+    setShowTicketModal(false);
+    // Trigger Paystack
+    setTimeout(() => setShowPaystack(true), 500);
+};
 
   const handlePaymentSuccess = async (res: any) => {
       // res contains transaction reference
@@ -254,19 +253,7 @@ export default function EventDetails({ route, navigation }: any) {
     <View style={styles.container}>
 
       {/* --- PAYSTACK INVISIBLE COMPONENT --- */}
-      <Paystack
-        paystackKey="pk_test_d1f11e6049002b4b2569f8458247007d016d2651" // YOUR KEY
-        amount={selectedTicket ? Number(selectedTicket.price) : 0.00}
-        billingEmail={userEmail}
-        activityIndicatorColor="green"
-        onCancel={(e:any) => {
-            console.log("Payment Cancelled", e);
-            Alert.alert("Cancelled", "Payment process was cancelled.");
-        }}
-        onSuccess={handlePaymentSuccess}
-        ref={paystackWebViewRef}
-        currency='NGN' // Ensure currency is set
-      />
+    
 
       {/* Header Image */}
       <View style={styles.headerImageContainer}>
@@ -458,6 +445,22 @@ export default function EventDetails({ route, navigation }: any) {
             </View>
         </View>
       </Modal>
+
+                {/* CUSTOM PAYSTACK COMPONENT */}
+            <PaystackPayment
+            visible={showPaystack}
+            paystackKey="pk_test_d1f11e6049002b4b2569f8458247007d016d2651"
+            amount={selectedTicket ? Number(selectedTicket.price) : 0}
+            billingEmail={userEmail}
+            onCancel={() => {
+                setShowPaystack(false);
+                Alert.alert("Cancelled", "Payment was cancelled.");
+            }}
+            onSuccess={(res) => {
+                setShowPaystack(false);
+                handlePaymentSuccess(res);
+            }}
+            />
 
     </View>
     </KeyboardAvoidingView>
