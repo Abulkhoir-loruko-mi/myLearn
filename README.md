@@ -1,50 +1,43 @@
-# Welcome to your Expo app 👋
+# HostEasy 🎟️
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+**HostEasy** is a comprehensive mobile event management platform designed to bridge the gap between event organizers and attendees. It simplifies the entire lifecycle of an event—from creation and promotion to secure ticketing and real-time updates.
 
-## Get started
+## 📱 Features
 
-1. Install dependencies
+### For Organizers
+- **Event Creation:** Easily draft, edit, and publish events with details like location (Physical/Online/Hybrid), date, time, and images.
+- **Smart Notifications:** Automatically notify all users via Push Notification and In-App alerts the moment an event goes "Live."
+- **Announcements:** Post real-time updates to keep attendees informed.
+- **Sales Tracking:** Monitor ticket sales and revenue.
 
+### For Attendees
+- **Seamless Discovery:** Browse a feed of upcoming events with rich details and categories.
+- **Secure Payments:** Purchase tickets instantly using **Paystack** (Cards, Bank Transfer, USSD).
+- **Digital Wallet:** Access a "My Tickets" section containing unique **QR Codes** for entry validation.
+- **Real-time Alerts:** Receive instant push notifications for new events and updates.
+
+## 🛠️ Tech Stack
+
+- **Frontend:** React Native (Expo)
+- **Backend:** Supabase (PostgreSQL)
+- **Authentication:** Supabase Auth
+- **Serverless:** Supabase Edge Functions (Deno)
+- **Payments:** Paystack Payment Gateway
+- **Notifications:** Firebase Cloud Messaging (FCM) & Expo Notifications
+- **Maps/Location:** React Native Maps (Google Maps API)
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js & npm installed
+- Expo CLI (`npm install -g expo-cli`)
+- A Supabase Project
+- A Paystack Account (Test Keys)
+- A Firebase Project (for Notifications)
+
+### Installation
+
+1. **Clone the repository:**
    ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
-```
-
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+   git clone [[(https://github.com/Abulkhoir-loruko-mi/HostEasy.git)]](https://github.com/Abulkhoir-loruko-mi/HostEasy.git))]()
+   cd HostEasy
