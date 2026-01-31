@@ -12,6 +12,12 @@ import {
     TextInput, TouchableOpacity,
     View
 } from 'react-native';
+import {
+    Menu,
+    MenuOption,
+    MenuOptions,
+    MenuTrigger,
+} from 'react-native-popup-menu';
 import EventCard from '../components/EventCard';
 import { supabase } from './lib/supabase';
 
@@ -182,12 +188,42 @@ export default function HomeScreen({ navigation }:any) {
                       <View style={styles.redDot} /> 
                     </TouchableOpacity>
 
-                    {/* Profile Icon (Existing) */}
-                    <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
-                        <View style={styles.profileIconPlaceholder}>
-                            <Ionicons name="person" size={20} color="#fff"/>
+    
+
+                    {/* NEW: Dropdown Menu */}
+            <Menu>
+                <MenuTrigger>
+                    <View style={{ padding: 5, marginRight: 5 }}>
+                        <Ionicons name="ellipsis-vertical" size={24} color="#333" />
+                    </View>
+                </MenuTrigger>
+                
+                <MenuOptions customStyles={optionsStyles}>
+                    {/* Option 1: Create Event */}
+                    <MenuOption onSelect={() => navigation.navigate('CreateEvent')}>
+                        <View style={styles.menuOptionRow}>
+                            <Ionicons name="add-circle-outline" size={20} color="#007BFF" style={{ marginRight: 10 }} />
+                            <Text style={styles.menuOptionText}>Create Event</Text>
                         </View>
-                    </TouchableOpacity>
+                    </MenuOption>
+                    
+                    {/* Option 2: Static Item (Settings) */}
+                    <MenuOption onSelect={() => alert('Settings coming soon!')}>
+                        <View style={styles.menuOptionRow}>
+                            <Ionicons name="settings-outline" size={20} color="#666" style={{ marginRight: 10 }} />
+                            <Text style={styles.menuOptionText}>Settings</Text>
+                        </View>
+                    </MenuOption>
+
+                    {/* Option 3: Static Item (Help) */}
+                    <MenuOption onSelect={() => alert('Help coming soon!')}>
+                        <View style={styles.menuOptionRow}>
+                            <Ionicons name="help-circle-outline" size={20} color="#666" style={{ marginRight: 10 }} />
+                            <Text style={styles.menuOptionText}>Help & Support</Text>
+                        </View>
+                    </MenuOption>
+                </MenuOptions>
+            </Menu>
                 </View>
             </View>
 
@@ -257,6 +293,20 @@ const styles = StyleSheet.create({
   greetingText: { fontSize: 22, fontWeight: 'bold', color: '#333' },
   profileIconPlaceholder: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#ccc', justifyContent: 'center', alignItems: 'center' },
 
+  // Add inside StyleSheet.create({...})
+
+  menuOptionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 5,
+  },
+  menuOptionText: {
+    fontSize: 16,
+    color: '#333',
+  },
+
+
+
   
 redDot: {
     position: 'absolute',
@@ -292,3 +342,15 @@ redDot: {
   emptyText: { fontSize: 18, fontWeight: 'bold', color: '#555', marginTop: 15 },
   emptySubText: { color: '#888', marginTop: 5 },
 });
+
+// Add this OUTSIDE the StyleSheet.create, just as a constant variable
+const optionsStyles = {
+  optionsContainer: {
+    backgroundColor: '#fff',
+    padding: 5,
+    borderRadius: 10,
+    elevation: 5, // Shadow for Android
+    marginTop: 30, // Push it down a bit
+    width: 200,
+  },
+};
