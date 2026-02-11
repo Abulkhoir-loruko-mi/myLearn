@@ -49,7 +49,7 @@ interface EventData {
   location_details: LocationDetails | null;
   is_paid: boolean;
   tickets: TicketItem[] | null;
- organizer_id: string; // Needed to check if current user is organizer
+ organizer_id: string; // to check if current user is organizer
   category?: string;
   tags?: string;
   creator_name:string
@@ -86,6 +86,7 @@ export default function EventDetails({ route, navigation }: any) {
   const [showTicketModal, setShowTicketModal] = useState(false);
   const [selectedTicket, setSelectedTicket] = useState<TicketItem | null>(null);
   const [showPaystack, setShowPaystack] = useState(false);
+  const [soldCounts, setSoldCounts] = useState<any>({}); // Stores { "VIP": 5, "Regular": 20 }
 
   // --- DATA FETCHING ---
   const fetchEventDetails = useCallback(async () => {
@@ -130,6 +131,29 @@ export default function EventDetails({ route, navigation }: any) {
   };
 
   useEffect(() => { fetchEventDetails(); }, [fetchEventDetails]);
+
+  useEffect(() => {
+   
+    fetchSoldCounts(); // <--- Add this
+}, []);
+
+const fetchSoldCounts = async () => {
+    // Fetch ALL confirmed bookings for this event
+    const { data, error } = await supabase
+        .from('bookings')
+        .select('ticket_name')
+        .eq('event_id', eventId)
+        .eq('status', 'confirmed'); // Only count valid tickets
+
+    if (data) {
+        // Count them up: { "VIP": 3, "Regular": 10 }
+        const counts: any = {};
+        data.forEach((booking: any) => {
+            counts[booking.ticket_name] = (counts[booking.ticket_name] || 0) + 1;
+        });
+        setSoldCounts(counts);
+    }
+};
 
      const handlePostAnnouncement = async () => {
       if (!newAnnouncementText.trim()) {
@@ -274,7 +298,7 @@ const processFreeBooking = async (ticket: any) => {
           if (error) throw error;
 
           Alert.alert("Success! 🎉", "Your ticket has been booked. Check your email.");
-          // Ideally navigate to a "My Tickets" screen here
+          //  navigating to a "My Tickets" screen here
           navigation.navigate('MainTabs', { screen: 'My Tickets' });
 
       } catch (e: any) {
@@ -382,7 +406,7 @@ const processFreeBooking = async (ticket: any) => {
              )}
 
               <View style={styles.creatorBox}>
-                           <Text style={styles.creatorLabel}>Created by</Text>
+                           <Text style={styles.creatorLabel}>Event Created by</Text>
                            <Text style={styles.creatorName}>{eventData.creator_name}</Text>
                        </View>
 
@@ -408,7 +432,7 @@ const processFreeBooking = async (ticket: any) => {
         {activeTab === 'announcements' && (
             <View style={styles.sectionCard}>
 
-                {/* SCENARIO A: Organizer View */}
+                {/* Organizer View */}
                 {isOrganizer ? (
                     <View>
                         <Text style={styles.sectionHeader}>Send an Update</Text>
@@ -435,7 +459,7 @@ const processFreeBooking = async (ticket: any) => {
 
                         <View style={styles.divider} />
                         <Text style={styles.subHeader}>Previous Announcements</Text>
-                        {/* We use map instead of FlatList here because it's inside a ScrollView already */}
+                        {/* using map instead of FlatList here because it's inside a ScrollView already */}
                         {announcements.map((item) => (
                             <View key={item.id} style={styles.announcementCard}>
                                 <Text style={styles.announcementContent}>{item.content}</Text>
@@ -448,7 +472,7 @@ const processFreeBooking = async (ticket: any) => {
 
                     </View>
                 ) : (
-                // SCENARIO B: Attendee View
+                // Attendee View
                     <View>
                         <Text style={styles.sectionHeader}>Updates from Organizer</Text>
                         {announcements.length === 0 ? (
@@ -499,22 +523,64 @@ const processFreeBooking = async (ticket: any) => {
         <View style={styles.modalOverlay}>
             <View style={styles.modalContent}>
                 <Text style={styles.modalTitle}>Select Ticket Type</Text>
-                {eventData.tickets?.map((ticket, index) => (
-                    <TouchableOpacity 
-                        key={index} 
-                        style={styles.ticketOption}
-                        onPress={() => onTicketSelect(ticket)}
-                    >
-                        <Text style={styles.ticketName}>{ticket.name}</Text>
-                        <Text style={styles.ticketPrice}>₦{Number(ticket.price).toLocaleString()}</Text>
-                    </TouchableOpacity>
-                ))}
+
+
+                {
+                
+                
+                     // Inside your map function or FlatList renderItem
+                    eventData.tickets?.map((ticket: any, index: number) => {
+                        
+                        // CALCULATE REMAINING
+                        const totalLimit = parseInt(ticket.quantity || '500'); // Default to 100 if not set
+                        const sold = soldCounts[ticket.name] || 0;
+                        const remaining = totalLimit - sold;
+                        const isSoldOut = remaining <= 0;
+
+                        return (
+                            <TouchableOpacity 
+                                key={index} 
+                                style={[
+                                    styles.ticketOption, 
+                                    isSoldOut && { opacity: 0.5, backgroundColor: '#f0f0f0' } // Dim if sold out
+                                ]}
+                                disabled={isSoldOut} // Prevent clicking if sold out
+                                onPress={() => onTicketSelect(ticket)}
+                            >
+                                <View>
+                                    <Text style={styles.ticketName}>{ticket.name}</Text>
+                                    
+                                    {/* SHOW REMAINING COUNT */}
+                                    <Text style={{ 
+                                        color: remaining < 5 ? 'red' : '#666', // Red if low stock
+                                        fontSize: 12, 
+                                        marginTop: 4 
+                                    }}>
+                                        {isSoldOut ? "SOLD OUT" : `🔥 Only ${remaining} left`}
+                                    </Text>
+                                </View>
+
+                                <View style={{ alignItems: 'flex-end' }}>
+                                    <Text style={styles.ticketPrice}>
+                                        {Number(ticket.price) === 0 ? 'Free' : `₦${ticket.price}`}
+                                    </Text>
+                                </View>
+                            </TouchableOpacity>
+                        );
+                    })
+                
+                
+                }
+
+
                 <TouchableOpacity style={styles.closeModalButton} onPress={() => setShowTicketModal(false)}>
                     <Text style={styles.closeModalText}>Cancel</Text>
                 </TouchableOpacity>
             </View>
         </View>
       </Modal>
+
+
 
                 {/* CUSTOM PAYSTACK COMPONENT */}
             <PaystackPayment

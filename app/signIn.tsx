@@ -6,8 +6,6 @@ import { supabase } from './lib/supabase'
 
 const SignIn = () => {
 
-  
-   
     const[password, setPassword]= useState('');
      const[email, setEmail]= useState('');
      const [loading, setLoading] = useState(false);
@@ -185,13 +183,7 @@ const styles = StyleSheet.create({
     marginLeft: 5
   },
   
-  button: {
-    backgroundColor: '#007BFF',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 10
-  },
+ 
   buttonText: { color: 'white', fontWeight: 'bold', fontSize: 16 },
   linkText: { color: '#007BFF', textAlign: 'center' }
 });

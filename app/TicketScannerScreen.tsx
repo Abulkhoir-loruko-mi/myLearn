@@ -30,9 +30,11 @@ export default function TicketScannerScreen({ navigation }: any) {
     try {
       // 1. Parse the QR Data
       // We expect data to be: {"bookingId":"...", "userId":"..."}
+
       let qrData;
       try {
         qrData = JSON.parse(data);
+        
       } catch (e) {
         Alert.alert("Invalid QR", "This is not a HostEasy ticket.");
         return;
@@ -57,7 +59,7 @@ export default function TicketScannerScreen({ navigation }: any) {
 
       // 3. Security Check: Is this YOUR event?
       const { data: { user } } = await supabase.auth.getUser();
-      if (booking.events.creator_id !== user?.id) {
+      if (booking.events.organizer_id !== user?.id) {
         Alert.alert("Access Denied", "You are not the organizer of this event.");
         return;
       }
@@ -72,10 +74,14 @@ export default function TicketScannerScreen({ navigation }: any) {
       const { error: updateError } = await supabase
         .from('bookings')
         .update({ status: 'checked_in' }) // We change status to prevent reuse
-        .eq('id', booking.id);
+        .eq('id', booking.id)
+        .select(); // <--- Adding .select() forces Supabase to return the error if it failsdd
 
-      if (updateError) throw updateError;
-
+      if (updateError) {
+        console.error("Update failed:", updateError);
+        Alert.alert("Database Error", "Could not check in ticket. Check permissions.");
+        return;
+      }
       Alert.alert("✅ VALID TICKET", `${booking.ticket_name}\nGuest: ${qrData.userId}\n\nChecked in successfully!`);
 
     } catch (err: any) {
@@ -84,9 +90,11 @@ export default function TicketScannerScreen({ navigation }: any) {
     } finally {
       setLoading(false);
       // Wait a bit before allowing next scan to prevent double-scanning
-      setTimeout(() => setScanned(false), 2000); 
+      setTimeout(() => setScanned(false), 5000); 
     }
   };
+
+  
 
   if (hasPermission === null) return <View style={styles.center}><Text>Requesting camera permission...</Text></View>;
   if (hasPermission === false) return <View style={styles.center}><Text>No access to camera</Text></View>;

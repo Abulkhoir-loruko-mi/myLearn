@@ -1,18 +1,15 @@
+import { Ionicons } from '@expo/vector-icons';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { Session } from '@supabase/supabase-js';
 import React, { useEffect, useState } from 'react';
-import { supabase } from './lib/supabase';
-
-
-
-import CreateEvent from './CreateEvent';
-
-
-import { Ionicons } from '@expo/vector-icons';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { MenuProvider } from 'react-native-popup-menu';
+import CreateEvent from './CreateEvent';
+import EditProfileScreen from './EditProfileScreen';
 import EventDetails from './EventDetails';
 import HomeScreen from './HomeScreen';
+import { supabase } from './lib/supabase';
+import ManageEventsScreen from './ManageEventsScreen';
 import MyTicketsScreen from './MyTicketScreen';
 import NotificationsScreen from './NotificationsScreen';
 import Profile from './Profile';
@@ -20,6 +17,7 @@ import PublishEvent from './PublishEvent';
 import SignIn from './signIn';
 import SignUp from './signUp';
 import TicketScannerScreen from './TicketScannerScreen';
+import WalletScreen from './WalletScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -47,7 +45,7 @@ function MainTabs() {
           return <Ionicons name={iconName as any} size={size} color={color} />;
         },
       })}
-    >
+     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="My Tickets" component={MyTicketsScreen} />
       <Tab.Screen name="Profile" component={Profile} />
@@ -74,9 +72,27 @@ const AppStack = () => {
        {/* These screens sit ON TOP of the tabs when navigated to */}
        <Stack.Screen name="CreateEvent" component={CreateEvent} options={{ title: 'Create Event' }} />
        <Stack.Screen name="PublishEvent" component={PublishEvent} />
-       <Stack.Screen name="EventDetails" component={EventDetails} options={{ headerShown: false }} />
+       <Stack.Screen name="EventDetails" component={EventDetails} options={{ headerShown: true }} />
        <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ title: 'Notifications' }} />
        <Stack.Screen name="TicketScanner" component={TicketScannerScreen} options={{ headerShown: false }} />
+      
+       <Stack.Screen name="ManageEvents" component={ManageEventsScreen} options={{ title: 'My Events' }} 
+       
+      />
+
+      <Stack.Screen 
+    name="EditProfile" 
+    component={EditProfileScreen} 
+    options={{ title: 'Edit Profile' }} 
+/>
+
+
+
+<Stack.Screen 
+    name="Wallet" 
+    component={WalletScreen} 
+    options={{ title: 'My Wallet' }} 
+/>
       
     </Stack.Navigator>
   );
@@ -84,7 +100,6 @@ const AppStack = () => {
 
 // --- 4. ROOT NAVIGATOR (The Switch) ---
 export default function AppNavigation() {
-  //const [session, setSession] = useState(null);
     const [session, setSession] = useState<Session | null>(null);
 
   useEffect(() => {

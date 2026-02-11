@@ -12,6 +12,7 @@ import DateTimePickerModal from 'react-native-modal-datetime-picker';
 // FORCE the use of the legacy Expo FileSystem to avoid warnings/errors
 // This allows us to use readAsStringAsync in Expo SDK 52+
 import * as FileSystem from 'expo-file-system/legacy';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from './lib/supabase';
 
 
@@ -43,7 +44,7 @@ const language=[
 {label:'Arabic', value:'arabic'}
 ]
 
-export default function CreateEvent({navigation}:{navigation:any}) {
+export default function CreateEvent({navigation,route}:any) {
     const[activeid, setActiveid]=useState(null)
     const[eventName, setEventName]=useState('')
     const[description, setDescription]=useState('')
@@ -61,10 +62,11 @@ export default function CreateEvent({navigation}:{navigation:any}) {
     const[single, setSingleEvent]=useState(true)
     const[recurring, setRecurring]=useState(false)
     const[selectedDays, setSelectedDays]=useState<Array<string>>([])
-    const[startDate, setStartDate]= useState(null)
-    const[endDate, setEndDate]=useState(null)
-    const [endTime, setEndTime]=useState(null)
-    const[startTime, setStartTime]=useState(null)
+  const [startDate, setStartDate] = useState<Date | null>(null);
+const [startTime, setStartTime] = useState<Date | null>(null);
+
+const [endDate, setEndDate] = useState<Date | null>(null);
+const [endTime, setEndTime] = useState<Date | null>(null);
     const[isStartDatePickerVisible, setStartDatePickerV]=useState(false)
     const[isStartTimePickerVisible, setStartTimePickerVi]=useState(false)
     const[isEndDatePickerVisible, setEndDatePickerV]=useState(false)
@@ -85,10 +87,62 @@ export default function CreateEvent({navigation}:{navigation:any}) {
     const[isDraft, setIsDraft]=useState(true);
       const [errors, setErrors] = useState<Record<string, string>>({});
 
-      const ErrorText = ({ error }:any) => {
+
+
+
+
+    const ErrorText = ({ error }:any) => {
     if (!error) return null;
     return <Text style={{ color: 'red', fontSize: 12, marginTop: 5 }}>{error}</Text>;
-}
+    }
+
+  const eventToEdit = route.params?.event; 
+  const isEditing = !!eventToEdit;
+
+
+ 
+
+
+  useEffect(() => {
+  // Check if an event was passed via navigation
+  const eventToEdit = route.params?.event;
+  
+  if (eventToEdit) {
+    // 1. Basic Info
+    setEventName(eventToEdit.title);
+    setDescription(eventToEdit.description);
+    setPhoto(eventToEdit.image_url); // Store existing URL
+    setCustomUrl(eventToEdit.custom_url);
+
+
+
+    // 2. Dates (Convert strings back to Date objects)
+    if (eventToEdit.start_date) {
+        const start = new Date(eventToEdit.start_date);
+        setStartDate(start);
+        setStartTime(start); // Assuming separate states for date/time
+    }
+    if (eventToEdit.end_date) {
+        const end = new Date(eventToEdit.end_date);
+        setEndDate(end);
+        setEndTime(end);
+    }
+
+    // 3. Toggles & Arrays
+    setOnline(eventToEdit.is_online);
+    setPhysical(eventToEdit.is_physical);
+    setRecurring(eventToEdit.is_recurring);
+    setTickets(eventToEdit.tickets || []); // Load tickets back
+    setIsPaid(eventToEdit.is_paid);
+    
+    // 4. Location Details
+    if (eventToEdit.location_details) {
+        setAddress(eventToEdit.location_details.address || '');
+        setPlatformlink(eventToEdit.location_details.link || '');
+        setselectedPlat(eventToEdit.location_details.platform || '');
+    }
+  }
+}, [route.params?.event]);
 
 
 
@@ -162,69 +216,68 @@ export default function CreateEvent({navigation}:{navigation:any}) {
  
 
 
-const saveEventToDB = async (status:any) => {
+
+  const saveEventToDB = async (statusOverride: any) => {
+    // Check if we are in "Edit Mode"
+    const eventToEdit = route.params?.event;
+    const isEditing = !!eventToEdit;
+
+    // --- 1. SMART IMAGE HANDLING ---
+    // If photo starts with 'http', it's already uploaded. Don't upload again.
+    let imageUrl = photo;
     
-    // 1. Upload Image (using helper from before)
-    if (!photo) return alert("Please select an event image");
+    if (photo && !photo.startsWith('http')) {
+        // It's a local file, so we must upload it
+        imageUrl = await uploadImageToSupabase(photo);
+        if (!imageUrl) return null;
+    } else if (!photo) {
+        alert("Please select an event image");
+        return null;
+    }
 
-    const imageUrl = await uploadImageToSupabase(photo);
-    if (!imageUrl) return null;
-
+    // --- 2. PREPARE DATA ---
     const prepareEventData = async () => {
-  
+        const fullStartDateTime = combineDateAndTime(startDate, startTime);
+        const fullEndDateTime = combineDateAndTime(endDate, endTime);
 
-  const fullStartDateTime = combineDateAndTime(startDate, startTime);
-  const fullEndDateTime = combineDateAndTime(endDate, endTime);
+        const settlementPayload = ispaid ? {
+            business_name: businessName,
+            bank_name: isManualBank ? manualBankName : selectedBank?.label,
+            bank_code: isManualBank ? null : selectedBank?.value,
+            account_number: accountNumber,
+            account_name: accountName
+        } : null;
 
+        const { data: { user } } = await supabase.auth.getUser();
 
-  const settlementPayload = ispaid ? {
-      business_name: businessName,
-      bank_name: isManualBank ? manualBankName : selectedBank?.label, // Get the name, not just ID
-      bank_code: isManualBank ? null : selectedBank?.value,
-      account_number: accountNumber,
-      account_name: accountName
-  } : null;
+        return {
+            title: eventName,
+            description: description,
+            image_url: imageUrl, // Use the smart URL from step 1
+            custom_url: customUrl,
+            is_online: online,
+            is_physical: physical,
+            location_details: {
+                platform: selectedPlatform,
+                link: PlatformLink,
+                address: address
+            },
+            language: selectedLanguage,
+            is_recurring: recurring,
+            recurring_days: selectedDays,
+            start_date: fullStartDateTime,
+            end_date: fullEndDateTime,
+            is_paid: ispaid,
+            tickets: tickets,
+            settlement_info: settlementPayload,
+            // If editing, keep existing status, otherwise use draft/published logic
+            status: statusOverride || (isDraft ? 'draft' : 'published'), 
+            organizer_id: user?.id,
+            creator_name: user?.user_metadata?.full_name
+        };
+    };
 
-  // Get current user
-  const { data: { user } } = await supabase.auth.getUser();
-
-  // 5. RETURN THE FINAL OBJECT FOR SUPABASE
-  return {
-    title: eventName,
-    description: description,
-    image_url: imageUrl, // Ensure you uploaded the photo first!
-    custom_url: customUrl,
-
-    is_online: online,    
-    is_physical: physical, 
-
-    location_details: {
-    platform: selectedPlatform,
-    link: PlatformLink,         
-  
-    address: address
-  },
-    
-    language: selectedLanguage,
-    
-    is_recurring: recurring,
-    recurring_days: selectedDays, // Supabase accepts arrays directly
-    
-    start_date: fullStartDateTime,
-    end_date: fullEndDateTime,
-    
-    is_paid: ispaid,
-    tickets: tickets, // Saves the whole array as JSON automatically
-    
-    settlement_info: settlementPayload, // Saves as JSON
-    
-    status: isDraft ? 'draft' : 'published',
-    organizer_id: user?.id,
-    creator_name: user?.user_metadata?.full_name
-  };
-};
-
-// --- HELPER TO MERGE DATE + TIME ---
+    // --- HELPER TO MERGE DATE + TIME ---
 interface DateTimeObject extends Date {}
 
 const combineDateAndTime = (dateObj: DateTimeObject | null, timeObj: DateTimeObject | null): string | null => {
@@ -239,21 +292,42 @@ const combineDateAndTime = (dateObj: DateTimeObject | null, timeObj: DateTimeObj
     
     return date.toISOString(); // Returns "2025-10-25T14:30:00.000Z"
 };
-    
 
-    // 3. Insert into Supabase
+
+
     const eventData = await prepareEventData();
-    const { data, error } = await supabase
-      .from('events')
-      .insert([eventData])
-      .select(); // .select() is crucial to get the new ID back!
+
+    // --- 3. DATABASE ACTION (UPDATE OR INSERT) ---
+    let resultData, error;
+
+    if (isEditing) {
+        // A. UPDATE EXISTING EVENT
+        const { data, error: updateError } = await supabase
+            .from('events')
+            .update(eventData)
+            .eq('id', eventToEdit.id) // Target the specific ID
+            .select();
+        
+        resultData = data;
+        error = updateError;
+    } else {
+        // B. CREATE NEW EVENT
+        const { data, error: insertError } = await supabase
+            .from('events')
+            .insert([eventData])
+            .select();
+        
+        resultData = data;
+        error = insertError;
+    }
 
     if (error) {
-      alert(error.message);
-      return null;
+        alert(error.message);
+        return null;
     }
-    return data[0]; // Return the created event object
-  };
+
+    return resultData ? resultData[0] : null;
+};
 
   // --- BUTTON 1: SAVE AS DRAFT ---
   const handleSaveDraft = async () => {
@@ -264,7 +338,7 @@ const combineDateAndTime = (dateObj: DateTimeObject | null, timeObj: DateTimeObj
     if (newEvent) {
      setUploadingd(false)
       alert("Event saved to Drafts!");
-      navigation.navigate('EventPage'); 
+      navigation.navigate('MainTabs'); 
     }
   };
 
@@ -277,23 +351,30 @@ const combineDateAndTime = (dateObj: DateTimeObject | null, timeObj: DateTimeObj
       Alert.alert("Validation Error", "Please fix the errors highlighted in red.");
       return; // Stop execution if invalid
   }
-    if (!eventName || !startDate) return alert("Please fill basic info");
+    //if (!eventName || !startDate) return alert("Please fill basic info");
 
      setUploading(true)
 
+     const currentStatus = route.params?.event?.status || 'draft';
+    const newEvent = await saveEventToDB(currentStatus);
+
+    setUploading(false);
+
     // Save as 'draft' first (or a temp status), then move to next screen
-    const newEvent = await saveEventToDB('draft'); 
+   // const newEvent = await saveEventToDB('draft'); 
     
     if (newEvent) {
         setUploading(false)
       // NAVIGATE TO PUBLISH PAGE
       // We pass the 'eventId' so the next page knows what to fetch/update
       navigation.navigate('PublishEvent', { 
-        eventId: newEvent.id, 
+        eventId: newEvent, 
         previewImage: newEvent.image_url,
         previewTitle: newEvent.title,
         startDate:newEvent.start_date,
         description:newEvent.description,
+        event: newEvent,
+        mode: route.params?.event ? 'edit' : 'create'
       });
     }
   };
@@ -594,24 +675,24 @@ const combineDateAndTime = (dateObj: DateTimeObject | null, timeObj: DateTimeObj
                         setEventName(text);
                         // Optional: Clear error as soon as they start typing again
                         if (errors.eventName) setErrors({...errors, eventName: ''});
-                    }}
+                        }}
                         />
                         <ErrorText error={errors.eventName} />
 
                         <Text style={[styles.text, {color:'#666', marginBottom:10}]}>Chose a clear and descriptive name for your event</Text>
                           <TextInput
-                        style={[styles.input, errors.eventDescription && { borderColor: 'red' }]}
+                        style={[styles.input, errors.description && { borderColor: 'red' }]}
                         placeholder='Event description'
                         value={description}
                          onChangeText={(text) => {
                         setDescription(text);
                         // Optional: Clear error as soon as they start typing again
-                        if (errors.eventDescription) setErrors({...errors, eventDescription: ''});
-                    }}
+                        if (errors.description) setErrors({...errors, description: ''});
+                        }}
                         multiline={true}
                         
                         />
-                        <ErrorText error={errors.eventDescription} />
+                        <ErrorText error={errors.description} />
                         <Text style={[styles.text, {color:'#666', paddingBottom:20}]}>Write a description of your event</Text>
 
                         <TextInput
@@ -621,6 +702,11 @@ const combineDateAndTime = (dateObj: DateTimeObject | null, timeObj: DateTimeObj
                         onChangeText={setCustomUrl}
                         />
                         <Text style={[styles.text, {color:'#666', marginBottom:20}]}>Chose a custom url</Text>
+
+                        <TouchableOpacity onPress={pickImage} style={{flexDirection:'row', alignItems:'center', marginBottom:10,borderRadius:10, padding:10, backgroundColor:'#f0f0f0'}}>
+                            <Text style={styles.title}>Change Image</Text>
+                            <Ionicons name='image-outline' size={24} color='#666'/>
+                        </TouchableOpacity>
 
                         <View style={[styles.previewContainer,{backgroundColor:'#34066fff', padding:10}]}>
 
@@ -664,6 +750,7 @@ const combineDateAndTime = (dateObj: DateTimeObject | null, timeObj: DateTimeObj
                     <View >
                         <Text style={[styles.title, {fontSize:16, fontWeight:'bold',padding:10}]}>Choose type of location</Text>
                         <View style={{flexDirection:'row', padding:10,alignItems:'center'}}>
+
                             <Checkbox
                             value={online}
                             onValueChange={setOnline}
@@ -680,12 +767,15 @@ const combineDateAndTime = (dateObj: DateTimeObject | null, timeObj: DateTimeObj
                             />
                             <Text style={{padding:10}}>Physical</Text>
                         </View>
+                         <ErrorText error={errors.location} />
+                         
+
 
                          {online && (
                             <View>
 
                                 <Text style={[styles.title,{padding:10} ]}>How do people join your event</Text>
-                        <View style={{ padding:10, justifyContent:'space-between'}}>
+                              <View style={{ padding:10, justifyContent:'space-between'}}>
                             
                                 <Dropdown 
                                 style={[styles.dropdowns,  isFocus && {borderColor: 'blue'}]}
@@ -711,6 +801,7 @@ const combineDateAndTime = (dateObj: DateTimeObject | null, timeObj: DateTimeObj
                                 style={[styles.input, {marginTop:10}]}
                                 placeholder='Enter Platform link'
                                 />
+                                 <ErrorText error={errors.platformLink} />
 
                         </View>
                             </View>
@@ -789,7 +880,7 @@ const combineDateAndTime = (dateObj: DateTimeObject | null, timeObj: DateTimeObj
                             <View>
                                 <Text style={{padding:10, color:'#666'}}>You can set single event details after creating the event</Text>
 
-                                 <View style={{flexDirection:'row', padding:10, flex:1,justifyContent:'space-evenly'}}>
+                                <View style={{flexDirection:'row', padding:10, flex:1,justifyContent:'space-evenly'}}>
 
                                     <View >
                                         <Text style={styles.title}>Start Date</Text>
@@ -812,6 +903,7 @@ const combineDateAndTime = (dateObj: DateTimeObject | null, timeObj: DateTimeObj
                                     </View>
 
                                 <View >
+                                   
                             <Text style={styles.title}>End Date</Text>
                            
                             
@@ -833,6 +925,7 @@ const combineDateAndTime = (dateObj: DateTimeObject | null, timeObj: DateTimeObj
                          </View>
                             
                          </View>
+                         
 
 
                           <View style={{flexDirection:'row',padding:10,flex:1,justifyContent:'space-evenly'}}>
@@ -857,6 +950,7 @@ const combineDateAndTime = (dateObj: DateTimeObject | null, timeObj: DateTimeObj
 
                          <View>
                             
+                            
                             <Text style={styles.title}>End Time</Text>
                             <TouchableOpacity style={[styles.pickerbox,]} onPress={handleConfirmEndTime} >
                                 <Text style={{fontSize:16}}>{formatTime(endTime)}</Text>
@@ -878,10 +972,16 @@ const combineDateAndTime = (dateObj: DateTimeObject | null, timeObj: DateTimeObj
                          </View>
                             
                          </View>
+                          <ErrorText error={errors.endDate} />
+                          <ErrorText error={errors.endTime} />
+                           <ErrorText error={errors.startTime} />
+                             <ErrorText error={errors.startDate} />
 
 
                             </View>
                          )}
+
+
 
                          {!single && (
 
@@ -1070,7 +1170,10 @@ const combineDateAndTime = (dateObj: DateTimeObject | null, timeObj: DateTimeObj
                                 </View>
                                 
                             ))
+
                         }
+
+                          <ErrorText error={errors.tickets} />
 
                         {
                             ispaid &&(
@@ -1082,7 +1185,7 @@ const combineDateAndTime = (dateObj: DateTimeObject | null, timeObj: DateTimeObj
                            
                         }
 
-                         {ispaid &&(
+                    { ispaid &&(
 
                               <View style={styles.containera}>
 
@@ -1133,6 +1236,7 @@ const combineDateAndTime = (dateObj: DateTimeObject | null, timeObj: DateTimeObj
                         }}
                         />
                     )}
+
 
                      <Text style={styles.label}>Account Number</Text>
                      <View style={styles.accountContainer}> 
@@ -1187,6 +1291,7 @@ const combineDateAndTime = (dateObj: DateTimeObject | null, timeObj: DateTimeObj
                        </View>
                                 
                             )}
+                              <ErrorText error={errors.bank} />
 
 
                       
@@ -1201,7 +1306,7 @@ const combineDateAndTime = (dateObj: DateTimeObject | null, timeObj: DateTimeObj
     }
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={styles.container}>
 
       <View style={styles.headerContainer}>
         <TouchableOpacity>
@@ -1272,7 +1377,9 @@ const combineDateAndTime = (dateObj: DateTimeObject | null, timeObj: DateTimeObj
                    {uploading ? (
             <ActivityIndicator size="small" color="#0000ff" />
           ) : (
-            <Text style={styles.buttontext}>Save and continue</Text>
+            <Text style={styles.buttontext}>
+                {isEditing? "Update Event" : "Save and continue"}
+            </Text>
           )}
                
             </Pressable>
@@ -1281,7 +1388,7 @@ const combineDateAndTime = (dateObj: DateTimeObject | null, timeObj: DateTimeObj
        
                                
           </View>
-    </View>
+    </SafeAreaView>
   )
 }
 

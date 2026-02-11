@@ -12,11 +12,8 @@ serve(async (req) => {
     console.log(`🔔 Webhook received: ${type} on ${table}`);
 
     // 1. Validation
-    if (
-      table !== 'events' ||
-      record.status !== 'published' ||
-      (old_record && old_record.status === 'published')
-    ) {
+    if (table !== 'events' || record.status !== 'published' || (old_record && old_record.status === 'published')) 
+      {
       console.log("Skipping: Not a fresh 'Go Live' event.");
       return new Response(JSON.stringify({ message: 'Skipped' }), { status: 200 });
     }
@@ -36,7 +33,7 @@ serve(async (req) => {
       // We removed the .not('push_token', 'is', null) filter here 
       // because we want to save In-App notifications even for users without tokens.
 
-    // Filter out the organizer (Optional: Comment out for testing)
+    //  i Filter out the organizer he'll also see the notification
     if (organizerId) {
        // query = query.neq('id', organizerId); 
     }

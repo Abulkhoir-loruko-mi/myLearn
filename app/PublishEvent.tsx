@@ -2,15 +2,19 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { Alert, Image, Keyboard, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, Keyboard, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Dropdown } from 'react-native-element-dropdown';
 import DateTimePickerModal from "react-native-modal-datetime-picker";
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from './lib/supabase';
 
 
 export default function PublishEvent({route}:any) {
     const navigation = useNavigation<any>();
-    const { eventId, previewImage, previewTitle,startDate=new Date().toISOString(),description } = route.params || {};
+    const {eventId, previewImage, previewTitle,startDate=new Date().toISOString(),description } = route.params || {};
+    const { event, mode } = route.params || {};
+
+
     const[creatorName, setCreatorname]= useState('loading...')
     const[publishOption, setPublishOption]=useState('now')
     const[showDatePicker, setShowDatePicker]= useState(false)
@@ -27,19 +31,23 @@ export default function PublishEvent({route}:any) {
 
       const categoryData = [
         { label: 'Technology', value: 'tech' },
-        { label: 'Music', value: 'music' },
+       // { label: 'Music', value: 'music' },
         { label: 'Business', value: 'business' },
         { label: 'Religious', value: 'religious' },
         { label: 'Islamic History', value: 'islamic_history' },
         { label: 'Technology & Innovation', value: 'tech' },
         { label: 'Health & Wellness', value: 'health' },
+        { label: 'Islamic studies', value: 'islamic_studies' },
+        { label: 'Science', value: 'science' },
+        { label: 'Language', value: 'language' },
+        { label: 'Personal Development', value: 'personal_evelopment' },
 
       ];
 
-           const ErrorText = ({ error }:any) => {
+        const ErrorText = ({ error }:any) => {
           if (!error) return null;
           return <Text style={{ color: 'red', fontSize: 12, marginTop: 5 }}>{error}</Text>;
-      }
+        }
 
         useEffect(()=>{
           const getUser=async()=>{
@@ -49,6 +57,29 @@ export default function PublishEvent({route}:any) {
           
           getUser()
         },[])
+
+        useEffect(() => {
+          if (event) {
+              // Pre-fill Category if it exists
+              if (event.category) setCategory(event.category);
+              
+              // Pre-fill Sub-category
+              if (event.sub_category) setSubcategory(event.sub_category);
+              
+              // Pre-fill Scheduled Date (if they set one before)
+              if (event.scheduled_publish_date) {
+                  setScheduleDate(new Date(event.scheduled_publish_date));
+              }
+
+              // Pre-fill Redirect URL
+              if (event.redirect_url) {
+                  setRedirectUrl(event.redirect_url);}
+              // Pre-fill Tags
+              if (event.tags) {
+                  setTags(event.tags);  }
+              
+          }
+        }, [event]);
 
 
     const validatePublishForm = () => {
@@ -63,22 +94,23 @@ export default function PublishEvent({route}:any) {
 
       // --- Redirect URL (Regex check) ---
       // Simple regex to check for http:// or https:// followed by something
-      const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
-      if (redirectUrl && !urlRegex.test(redirectUrl)) {
-          tempErrors.redirectUrl = "Please enter a valid URL (e.g., https://google.com)";
-          isValid = false;
-      }
+      //const urlRegex = /^(https?:\/\/)?([\da-z\.-]+)\.([a-z\.]{2,6})([\/\w \.-]*)*\/?$/;
+      // if (redirectUrl && !urlRegex.test(redirectUrl))
+     // if (!redirectUrl ) {
+        //  tempErrors.redirectUrl = "Please enter a valid URL (e.g., https://google.com)";
+        //  isValid = false;
+      //}
 
       // --- Scheduling Logic ---
       if (publishOption === 'later') {
           // Check if scheduledDate is in the past (allowing a small buffer of 1 minute for slow presses)
           const nowPlusBuffer = new Date(new Date().getTime() - 60000);
           if (scheduleDate < nowPlusBuffer) {
-              // We don't necessarily need an UI error text for this, an Alert is fine here
+              // an Alert is fine here
               Alert.alert("Schedule Error", "You cannot schedule an event in the past. Please select a future date.");
               isValid = false;
               // Alternatively, set a state to turn the date picker text red
-              // tempErrors.schedule = true; 
+               tempErrors.schedule = 'Select a future date'; 
           }
       }
 
@@ -97,29 +129,33 @@ export default function PublishEvent({route}:any) {
          return;
     }
 
+    if (!event || !event.id) {
+        Alert.alert("Error", "Event ID is missing. Please try again.");
+        return;
+    }
+
     setLoading(true);
 
     let updatePayload = {
         category: category,
-        // Assuming you add subcategory and tags to DB later
          subcategory: subcategory, 
          tags: tags,
         redirect_url: redirectUrl,
-        status:'scheduled',
+        status: scheduleDate ? 'scheduled' : 'published',
         publish_at:''
+       // updated_at: new Date().toISOString()
     };
 
     // 2. DETERMINE STATUS AND PUBLISH TIME
     const currentTime = new Date().toISOString();
 
     if (publishOption === 'now') {
-        // OPTION A: Publish Immediately
+       
         updatePayload.status = 'published';
-        // Set publish_at to right now, so it passes the RLS check immediately
+      
         updatePayload.publish_at = currentTime; 
     } else {
-        // OPTION B: Schedule for Later
-        // Validate that scheduledDate is actually in the future
+       
         if (scheduleDate <= new Date()) {
              setLoading(false);
              Alert.alert("Error", "Scheduled time must be in the future.");
@@ -127,25 +163,45 @@ export default function PublishEvent({route}:any) {
         }
 
         updatePayload.status = 'scheduled';
-        // Set publish_at to the future date selected by the user
+       
         updatePayload.publish_at = scheduleDate.toISOString();
     }
 
-    console.log("Sending payload to DB:", updatePayload);
+    //console.log("Sending payload to DB:", updatePayload);
 
     // 3. SEND TO SUPABASE
     try {
         const { error } = await supabase
             .from('events')
             .update(updatePayload)
-            .eq('id', eventId); // Update the specific draft event
+            .eq('id', event.id); 
 
         if (error) throw error;
 
         Alert.alert(
             "Success", 
             publishOption === 'now' ? "Your event is Live!" : "Your event has been scheduled.",
-            [{ text: "OK", onPress: () => navigation.popToTop() }] // Go back home
+            
+            [{ text: "OK", onPress: ()=>console.log('done') }] 
+        );
+
+        // Success!
+        Alert.alert(
+            "Success", 
+            mode === 'edit' ? "Event updated successfully!" : "Event published successfully!",
+            [
+                { 
+                    text: "OK", 
+                    onPress: () => {
+                        // Navigate back to the correct place
+                        if (mode === 'edit') {
+                            navigation.navigate('ManageEvents');
+                        } else {
+                            navigation.navigate('MainTabs');
+                        }
+                    }
+                }
+            ]
         );
 
     } catch (error:any) {
@@ -154,13 +210,9 @@ export default function PublishEvent({route}:any) {
     } finally {
         setLoading(false);
     }
-};
+    };
 
-
-
-
-     
-  
+ 
 
       useEffect(() => {
         if (category === 'islamic_history') {
@@ -168,7 +220,25 @@ export default function PublishEvent({route}:any) {
             { label: 'Seerah', value: 'seerah' },
             { label: 'Golden Age', value: 'golden_age' }
           ]);
-        } else if (category === 'tech') {
+        } else if (category === 'language') {
+          setSubCategoryData([
+            { label: 'Arabic', value: 'arabic' },
+            { label: 'Yoruba', value: 'yoruba' },
+             { label: 'English', value: 'english' },
+              { label: 'Hausa', value: 'hausa' }
+          ]);
+        }else if (category === 'personal_development') {
+          setSubCategoryData([
+            { label: 'Mental health', value: 'mental_health' },
+            { label: 'Productivity', value: 'productivity' }
+          ]);
+        }else if (category === 'science') {
+          setSubCategoryData([
+            { label: 'Islamic science', value: 'islamic_science' },
+            { label: 'Mordern science', value: 'mordern_science' }
+          ]);
+        }
+        else if (category === 'tech') {
           setSubCategoryData([
             { label: 'AI & ML', value: 'ai' },
             { label: 'Blockchain', value: 'blockchain' }
@@ -210,7 +280,7 @@ export default function PublishEvent({route}:any) {
        <SafeAreaView style={styles.safeArea}>
 
         <ScrollView contentContainerStyle={styles.scrollContent}>
-          <Text style={styles.topHeaderMsg}>You're almost ready to go live</Text>
+          <Text style={styles.topHeaderMsg}>Your event is almost ready to go live</Text>
 
           <View style={styles.summaryContainer}>
          
@@ -259,7 +329,7 @@ export default function PublishEvent({route}:any) {
             onSelect={setPublishOption}
           />
 
-                    {publishOption === 'later' && (
+            {publishOption === 'later' && (
             <View style={{marginTop: 10}}>
               <TouchableOpacity
                  style={styles.datePickerButton}
@@ -277,20 +347,20 @@ export default function PublishEvent({route}:any) {
 
                        
 
-                {/* Replace the old DateTimePicker block with this */}
+                
                 <DateTimePickerModal
                   isVisible={showDatePicker}
                   mode="datetime"
                   onConfirm={(date) => {
                     // This runs when user taps "OK"
                     setScheduleDate(date);
-                    setShowDatePicker(false); // Hide the modal
+                    setShowDatePicker(false); 
                   }}
                   onCancel={() => {
-                    // This runs when user taps "Cancel" or outside
-                    setShowDatePicker(false); // Hide the modal
+                  
+                    setShowDatePicker(false); 
                   }}
-                  // It handles Android quirks automatically!
+                
                 />
               
 
@@ -313,10 +383,12 @@ export default function PublishEvent({route}:any) {
           <Text style={styles.sectionHeader}>Search Settings</Text>
           <Text style={styles.sectionDesc}>Help users find your event easily</Text>
 
-                    <View style={styles.dropdownRow}></View>
+                <View style={styles.dropdownRow}></View>
 
                 <View style={{flex: 1, marginRight: 10}}>
                 <Text style={styles.fieldLabel}>Category</Text>
+
+
                 <Dropdown
                 style={[styles.dropdown, isFocus && { borderColor: '#007BFF' }, errors.category && { borderColor: 'red' }]}
                 placeholderStyle={styles.placeholderStyle}
@@ -377,8 +449,17 @@ export default function PublishEvent({route}:any) {
             <Text style={styles.backButtonText}>Back</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.publishButton} onPress={handlePublish}>
-            <Text style={styles.publishButtonText}>Publish Event</Text>
+        <TouchableOpacity style={styles.publishButton} onPress={handlePublish} disabled={loading}>
+          {loading ? (
+        <ActivityIndicator color="#fff" />
+    ) : (
+            <Text style={styles.publishButtonText}>
+               {scheduleDate 
+                ? "Schedule Event" 
+                : (mode === 'edit' ? "Update Event" : "Publish Event Now")
+            }
+            </Text>
+            )}
         </TouchableOpacity>
       </View>
 

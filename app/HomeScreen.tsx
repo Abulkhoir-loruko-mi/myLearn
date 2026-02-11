@@ -5,7 +5,7 @@ import {
     ActivityIndicator,
     FlatList,
     RefreshControl,
-    SafeAreaView,
+
     ScrollView,
     StyleSheet,
     Text,
@@ -18,6 +18,7 @@ import {
     MenuOptions,
     MenuTrigger,
 } from 'react-native-popup-menu';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import EventCard from '../components/EventCard';
 import { supabase } from './lib/supabase';
 
@@ -45,30 +46,24 @@ export default function HomeScreen({ navigation }:any) {
       {id: 'tech', name: 'Tech'},
       {id: 'business', name: 'Business'},
       {id: 'islamic_history', name: 'Islamic History'},
-      {id: 'music', name: 'Music'},
+     // {id: 'music', name: 'Music'},
   ];
 
 
 
-// Update this useEffect in screens/HomeScreen.js
+
 
   // --- Fetch User Info on Mount ---
   useEffect(() => {
     const fetchUser = async () => {
-        // 1. Get the latest user object freshly from Supabase
+        // 1. latest user object freshly from Supabase
         const { data: { user }, error } = await supabase.auth.getUser();
 
         if (error || !user) {
             console.log("Error fetching user or no session:", error?.message);
             return;
         }
-
-
-   
         let fullName = user.user_metadata?.full_name;
-
-       
-
         // 4. Set the name if found
         if (fullName) {
              // Split by space and get the first part (the first name now my surname)
@@ -93,6 +88,7 @@ export default function HomeScreen({ navigation }:any) {
         .select('*');
 
     const now = new Date().toISOString();
+
       if (selectedTimeTab === 'upcoming') {
           //  events that end in the future
           query = query.gte('end_date', now).order('start_date', { ascending: true });
@@ -191,40 +187,42 @@ export default function HomeScreen({ navigation }:any) {
     
 
                     {/* NEW: Dropdown Menu */}
-            <Menu>
-                <MenuTrigger>
-                    <View style={{ padding: 5, marginRight: 5 }}>
-                        <Ionicons name="ellipsis-vertical" size={24} color="#333" />
-                    </View>
-                </MenuTrigger>
-                
-                <MenuOptions customStyles={optionsStyles}>
-                    {/* Option 1: Create Event */}
-                    <MenuOption onSelect={() => navigation.navigate('CreateEvent')}>
-                        <View style={styles.menuOptionRow}>
-                            <Ionicons name="add-circle-outline" size={20} color="#007BFF" style={{ marginRight: 10 }} />
-                            <Text style={styles.menuOptionText}>Create Event</Text>
-                        </View>
-                    </MenuOption>
-                    
-                    {/* Option 2: Static Item (Settings) */}
-                    <MenuOption onSelect={() => alert('Settings coming soon!')}>
-                        <View style={styles.menuOptionRow}>
-                            <Ionicons name="settings-outline" size={20} color="#666" style={{ marginRight: 10 }} />
-                            <Text style={styles.menuOptionText}>Settings</Text>
-                        </View>
-                    </MenuOption>
+                    <Menu>
+                        <MenuTrigger>
+                            <View style={{ padding: 5, marginRight: 5 }}>
+                                <Ionicons name="ellipsis-vertical" size={24} color="#333" />
+                            </View>
+                        </MenuTrigger>
+                        
+                        <MenuOptions customStyles={optionsStyles}>
+                            {/* Option 1: Create Event */}
+                            <MenuOption onSelect={() => navigation.navigate('CreateEvent')}>
+                                <View style={styles.menuOptionRow}>
+                                    <Ionicons name="add-circle-outline" size={24} color="#007BFF" style={{ marginRight: 10 }} />
+                                    <Text style={styles.menuOptionText}>Create Event</Text>
+                                </View>
+                            </MenuOption>
+                            
+                            {/* Option 2: Static Item (Settings) */}
+                            <MenuOption onSelect={() => alert('Settings coming soon!')}>
+                                <View style={styles.menuOptionRow}>
+                                    <Ionicons name="settings-outline" size={20} color="#666" style={{ marginRight: 10 }} />
+                                    <Text style={styles.menuOptionText}>Settings</Text>
+                                </View>
+                            </MenuOption>
 
-                    {/* Option 3: Static Item (Help) */}
-                    <MenuOption onSelect={() => alert('Help coming soon!')}>
-                        <View style={styles.menuOptionRow}>
-                            <Ionicons name="help-circle-outline" size={20} color="#666" style={{ marginRight: 10 }} />
-                            <Text style={styles.menuOptionText}>Help & Support</Text>
-                        </View>
-                    </MenuOption>
-                </MenuOptions>
-            </Menu>
+                            {/* Option 3: Static Item (Help) */}
+                            <MenuOption onSelect={() => alert('Help coming soon!')}>
+                                <View style={styles.menuOptionRow}>
+                                    <Ionicons name="help-circle-outline" size={20} color="#666" style={{ marginRight: 10 }} />
+                                    <Text style={styles.menuOptionText}>Help & Support</Text>
+                                </View>
+                            </MenuOption>
+                        </MenuOptions>
+                    </Menu>
+
                 </View>
+
             </View>
 
             {/* Search Bar */}
@@ -246,7 +244,7 @@ export default function HomeScreen({ navigation }:any) {
             </View>
 
             <View style={{ height: 50 }}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catScroll}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={true} contentContainerStyle={styles.catScroll}>
                     {categories.map(renderCategoryChip)}
                 </ScrollView>
             </View>
@@ -343,7 +341,7 @@ redDot: {
   emptySubText: { color: '#888', marginTop: 5 },
 });
 
-// Add this OUTSIDE the StyleSheet.create, just as a constant variable
+//  OUTSIDE the StyleSheet.create, just as a constant variable
 const optionsStyles = {
   optionsContainer: {
     backgroundColor: '#fff',

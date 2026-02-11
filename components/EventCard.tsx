@@ -3,6 +3,8 @@ import { format, parseISO } from 'date-fns';
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+
+
 const EventCard = ({ event, onPress }:any) => {
   const { title, image_url, start_date, is_online,is_physical, location_details, is_paid, tickets } = event;
 
@@ -16,16 +18,6 @@ const EventCard = ({ event, onPress }:any) => {
     }
   };
 
-  const getLocationText = () => {
-    if (is_online) {
-      return location_details?.platform || 'Online Event';
-
-    } else if (is_physical) {
-    
-      return location_details?.address || 'Physical Location';
-    }
-    return 'Hybrid / TBD';
-  };
 
   const getPriceText = () => {
     if (!is_paid || !tickets || tickets.length === 0) {
@@ -52,9 +44,13 @@ const EventCard = ({ event, onPress }:any) => {
           <View style={styles.badge}><Text style={styles.badgeText}>Online</Text></View>
       )}
 
-       {is_physical && (
+       {!is_online && (
           <View style={styles.badge}><Text style={styles.badgeText}>Physical</Text></View>
       )}
+
+      {is_online && is_physical &&(<View style={styles.badge}><Text style={styles.badgeText}>Hybrid</Text></View>)}
+
+
 
 
       {/* 2. Bottom Half: Details Area */}

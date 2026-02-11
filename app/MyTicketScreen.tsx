@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { format } from 'date-fns';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, Linking, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import QRCode from 'react-native-qrcode-svg'; // <--- The magic part
 import { supabase } from './lib/supabase';
 
@@ -33,7 +33,8 @@ export default function MyTicketsScreen({ navigation }: any) {
             start_date,
             is_online,
             is_physical,
-            image_url
+            image_url,
+            location_details
           )
         `)
         .eq('user_id', user.id)
@@ -44,7 +45,7 @@ export default function MyTicketsScreen({ navigation }: any) {
         return;
       }
 
-      //console.log("Data retrieved:", JSON.stringify(data, null, 2)); // <--- Check your terminal for this!
+      //console.log("Data retrieved:", JSON.stringify(data, null, 2)); 
       
       if (data) setTickets(data);
     } catch (err) {
@@ -64,7 +65,7 @@ export default function MyTicketsScreen({ navigation }: any) {
         <Text style={styles.eventTitle}>{item.events?.title}</Text>
         <Text style={styles.ticketType}>{item.ticket_name} Ticket • {item.quantity}x</Text>
         <Text style={styles.date}>
-          {item.events?.start_date ? format(new Date(item.events.start_date), 'MMM d, yyyy • h:mm a') : 'Date TBD'}
+         TimeStamp: {item.events?.start_date ? format(new Date(item.events.start_date), 'MMM d, yyyy • h:mm a') : 'Date TBD'}
         </Text>
         <View style={[styles.statusBadge, { backgroundColor: item.status === 'confirmed' ? '#e6f4ea' : '#fff3cd' }]}>
             <Text style={[styles.statusText, { color: item.status === 'confirmed' ? '#1e7e34' : '#856404' }]}>
@@ -116,6 +117,36 @@ export default function MyTicketsScreen({ navigation }: any) {
                 </View>
                 <Text style={styles.scanText}>Show this code at the entrance</Text>
                 <Text style={styles.refText}>Ref: {selectedTicket?.payment_reference}</Text>
+
+                                {/* --- ONLINE EVENT LINK SECTION --- */}
+                {selectedTicket?.events?.is_online && (
+                    <View style={{ marginBottom: 20, width: '100%' }}>
+                        <Text style={{ textAlign: 'center', marginBottom: 10, color: '#666' }}>
+                            This is an online event.
+                        </Text>
+                        <TouchableOpacity 
+                            style={{ 
+                                backgroundColor: '#28a745', 
+                                padding: 15, 
+                                borderRadius: 10, 
+                                alignItems: 'center',
+                                flexDirection: 'row',
+                                justifyContent: 'center'
+                            }}
+                            onPress={() => {
+                                const link = selectedTicket.events.location_details.link;
+                                if (link) {
+                                    Linking.openURL(link).catch(err => Alert.alert("Error", "Could not open link."));
+                                } else {
+                                    Alert.alert("No Link", "The organizer hasn't added a link yet.");
+                                }
+                            }}
+                        >
+                            <Ionicons name="videocam" size={20} color="#fff" style={{ marginRight: 10 }} />
+                            <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Join Event Now</Text>
+                        </TouchableOpacity>
+                    </View>
+                )}
 
                 <TouchableOpacity style={styles.closeButton} onPress={() => setSelectedTicket(null)}>
                     <Text style={styles.closeText}>Close</Text>

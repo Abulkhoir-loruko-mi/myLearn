@@ -7,8 +7,44 @@ import { supabase } from './lib/supabase';
 export default function ProfileScreen({ navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
+  const [profiles, setProfiles] = useState<any>(null);
   const [stats, setStats] = useState({ events: 0, ticketsSold: 0, revenue: 0 });
   const [isOrganizerMode, setIsOrganizerMode] = useState(false); // Toggle for view
+
+
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchProfileDatas();
+    }, [])
+  );
+
+  const fetchProfileDatas = async () => {
+    try {
+      // 1. Get Current User
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // 2. Fetch LIVE data from 'profiles' table
+      // (Auth metadata is often slow to update, so we trust the table more)
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*') // This grabs bio, avatar_url, full_name
+        .eq('id', user.id)
+        .single();
+
+      if (data) {
+        setProfile(data);
+      }
+
+    } catch (error) {
+      console.log("Error fetching profile:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ... rest of your code
 
   // Fetch data whenever screen comes into focus
   useFocusEffect(
@@ -23,13 +59,14 @@ export default function ProfileScreen({ navigation }: any) {
       if (!user) return;
 
       // 1. Get Profile Info
-      // (If you have a 'profiles' table, fetch from there. For now using Auth metadata)
-      setProfile({
+      
+      setProfiles({
         email: user.email,
         id: user.id,
-        // If you saved name/avatar in metadata:
+       
         full_name: user.user_metadata?.full_name || 'HostEasy User', 
-        avatar_url: user.user_metadata?.avatar_url || 'https://via.placeholder.com/150'
+        avatar_url: user.user_metadata?.avatar_url || 'https://via.placeholder.com/150',
+        bio: user.user_metadata?.bio || null
       });
 
       // 2. Get Organizer Stats (Count events and bookings for this user)
@@ -76,9 +113,18 @@ export default function ProfileScreen({ navigation }: any) {
       {/* --- HEADER --- */}
       <View style={styles.header}>
         <Image source={{ uri: profile?.avatar_url }} style={styles.avatar} />
-        <Text style={styles.name}>{profile?.full_name}</Text>
-        <Text style={styles.email}>{profile?.email}</Text>
-        <TouchableOpacity style={styles.editBtn} onPress={() => Alert.alert("Coming Soon", "Edit Profile feature")}>
+        <Text style={styles.name}>{profile?.full_name || "User"}</Text>
+        <Text style={styles.email}>{profiles?.email}</Text>
+        
+        // Example: Add this near your avatar in ProfileScreen
+
+     {profile?.bio && (
+        <Text style={{ color: '#666', textAlign: 'center', marginTop: 5, paddingHorizontal: 20 }}>
+            {profile.bio}
+        </Text>
+    )}
+
+        <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('EditProfile')}>
           <Text style={styles.editBtnText}>Edit Profile</Text>
         </TouchableOpacity>
       </View>
@@ -89,21 +135,21 @@ export default function ProfileScreen({ navigation }: any) {
             <Text style={styles.sectionTitle}>Organizer Dashboard</Text>
             <View style={styles.statsRow}>
               {/* NEW: SCANNER BUTTON */}
-    <TouchableOpacity 
-        style={{ 
-            marginTop: 20, 
-            backgroundColor: '#000', 
-            padding: 15, 
-            borderRadius: 10, 
-            flexDirection: 'row', 
-            justifyContent: 'center', 
-            alignItems: 'center' 
-        }}
-        onPress={() => navigation.navigate('TicketScanner')}
-    >
-    <Ionicons name="scan-outline" size={20} color="#fff" style={{ marginRight: 10 }} />
-    <Text style={{ color: '#fff', fontWeight: 'bold' }}>Scan Tickets</Text>
-</TouchableOpacity>
+                <TouchableOpacity 
+                    style={{ 
+                        marginTop: 10, 
+                        backgroundColor: '#000', 
+                        padding: 15, 
+                        borderRadius: 10, 
+                        flexDirection: 'row', 
+                        justifyContent: 'center', 
+                        alignItems: 'center' 
+                    }}
+                    onPress={() => navigation.navigate('TicketScanner')}
+                >
+                <Ionicons name="scan-outline" size={20} color="#fff" style={{ marginRight: 10 }} />
+                <Text style={{ color: '#fff', fontWeight: 'bold' }}>Scan Tickets</Text>
+                </TouchableOpacity>
                 <View style={styles.statCard}>
                     <Text style={styles.statValue}>{stats.events}</Text>
                     <Text style={styles.statLabel}>Events</Text>
@@ -132,14 +178,13 @@ export default function ProfileScreen({ navigation }: any) {
             onPress={() => navigation.navigate('My Tickets')} 
         />
         
+
         {isOrganizerMode && (
-             <MenuItem 
+            <MenuItem 
                 icon="calendar-outline" 
                 text="Manage My Events" 
-                onPress={() => Alert.alert("Next Step", "This will link to a 'MyCreatedEvents' screen.")} 
+                onPress={() => navigation.navigate('ManageEvents')}
             />
-
-
         )}
 
         <View style={styles.divider} />
@@ -149,10 +194,10 @@ export default function ProfileScreen({ navigation }: any) {
             text="Notification Preferences" 
             onPress={() => navigation.navigate('Notifications')} 
         />
-         <MenuItem 
-            icon="card-outline" 
-            text="Payment Methods" 
-            onPress={() => {}} 
+       <MenuItem 
+            icon="wallet-outline" 
+            text="Wallet & Payouts" 
+            onPress={() => navigation.navigate('Wallet')} 
         />
         
         <View style={styles.divider} />

@@ -67,7 +67,7 @@ export default function SignUp() {
               newErrors.password = "Password is required";
               valid = false;
             } else if (password.length < 6) {
-              newErrors.password = "Password must be at least 8 characters";
+              newErrors.password = "Password must be at least 6 characters";
               valid = false;
             }
             
@@ -158,7 +158,9 @@ export default function SignUp() {
             placeholder='Enter your FullName'
             maxLength={40}
         />
-              {errors.name && <Text style={Styles.errorText}>{errors.name}</Text>}
+        {errors.name && <Text style={Styles.errorText}>{errors.name}</Text>}
+
+
         <Text>Email</Text>
         <TextInput style={Styles.textInput}
              value={email}
@@ -171,6 +173,8 @@ export default function SignUp() {
             autoCapitalize="none"
 
         />
+
+
         <Text>Phone Number</Text>
         <TextInput style={Styles.textInput}
             value={phone}
@@ -179,14 +183,20 @@ export default function SignUp() {
             keyboardType='phone-pad'
         />
         <Text>Password</Text>
-        <TextInput style={Styles.textInput}
+        <TextInput style={[Styles.textInput, errors.password && Styles.inputError]}
             value={password}
-            onChangeText={setPassword}
+            onChangeText={(text)=>{
+              setPassword(text)
+              if(errors.password) setErrors({...errors, password:undefined})
+            }}
             placeholder='Password'
             secureTextEntry={true}
             autoCorrect={false}
             autoCapitalize="none"
         />
+        {errors.password && <Text style={Styles.errorText}> {errors.password}</Text>}
+
+
       </View>
 
       {loading ? (

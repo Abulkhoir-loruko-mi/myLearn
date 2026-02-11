@@ -146,12 +146,14 @@ const gStyles= StyleSheet.create({
       
 
    },
-   button:{
-      marginTop:20,
-      padding:16,
-      borderRadius:8,
-      backgroundColor:'green'
-   },
+    button: {
+    backgroundColor: '#007BFF',
+    padding: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 10
+  },
+ 
    textInput:{
     borderWidth:0.5,
     borderColor:'grey',
